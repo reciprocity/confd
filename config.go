@@ -44,7 +44,7 @@ func init() {
 	flag.StringVar(&config.ClientCaKeys, "client-ca-keys", "", "client ca keys")
 	flag.StringVar(&config.ClientCert, "client-cert", "", "the client cert")
 	flag.StringVar(&config.ClientKey, "client-key", "", "the client key")
-        flag.BoolVar(&config.ClientInsecure, "client-insecure", false, "Allow connections to SSL sites without certs (only used with -backend=etcd)")
+	flag.BoolVar(&config.ClientInsecure, "client-insecure", false, "Allow connections to SSL sites without certs (only used with -backend=etcd)")
 	flag.StringVar(&config.ConfDir, "confdir", "/etc/confd", "confd conf directory")
 	flag.StringVar(&config.ConfigFile, "config-file", "/etc/confd/confd.toml", "the confd config file")
 	flag.Var(&config.YAMLFile, "file", "the YAML file to watch for changes (only used with -backend=file)")
@@ -69,6 +69,7 @@ func init() {
 	flag.StringVar(&config.SecretID, "secret-id", "", "Vault secret-id to use with the AppRole backend (only used with -backend=vault and auth-type=app-role)")
 	flag.StringVar(&config.Path, "path", "", "Vault mount path of the auth method (only used with -backend=vault)")
 	flag.StringVar(&config.Table, "table", "", "the name of the DynamoDB table (only used with -backend=dynamodb)")
+	flag.StringVar(&config.Query, "query", "", "DynamoDB Query JSON (optional, only used with -backend=dynamodb)")
 	flag.StringVar(&config.Separator, "separator", "", "the separator to replace '/' with when looking up keys in the backend, prefixed '/' will also be removed (only used with -backend=redis)")
 	flag.StringVar(&config.Username, "username", "", "the username to authenticate as (only used with vault and etcd backends)")
 	flag.StringVar(&config.Password, "password", "", "the password to authenticate with (only used with vault and etcd backends)")
@@ -175,8 +176,8 @@ func initConfig() error {
 		}
 	}
 
-	if config.Backend == "dynamodb" && config.Table == "" {
-		return errors.New("No DynamoDB table configured")
+	if config.Backend == "dynamodb" && config.Table == "" && config.Query == "" {
+		return errors.New("No DynamoDB table or query configured")
 	}
 	config.ConfigDir = filepath.Join(config.ConfDir, "conf.d")
 	config.TemplateDir = filepath.Join(config.ConfDir, "templates")

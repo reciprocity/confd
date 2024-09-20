@@ -13,12 +13,10 @@ aws ssm put-parameter --name "/database/port" --type "String" --value "3306" --e
 aws ssm put-parameter --name "/database/username" --type "String" --value "confd" --endpoint-url $SSM_ENDPOINT_URL
 aws ssm put-parameter --name "/upstream/app1" --type "String" --value "10.0.1.10:8080" --endpoint-url $SSM_ENDPOINT_URL
 aws ssm put-parameter --name "/upstream/app2" --type "String" --value "10.0.1.11:8080" --endpoint-url $SSM_ENDPOINT_URL
-aws ssm put-parameter --name "/prefix/database/host" --type "String" --value "127.0.0.1" --endpoint-url $SSM_ENDPOINT_URL
-aws ssm put-parameter --name "/prefix/database/password" --type "String" --value "p@sSw0rd" --endpoint-url $SSM_ENDPOINT_URL
-aws ssm put-parameter --name "/prefix/database/port" --type "String" --value "3306" --endpoint-url $SSM_ENDPOINT_URL
-aws ssm put-parameter --name "/prefix/database/username" --type "String" --value "confd" --endpoint-url $SSM_ENDPOINT_URL
-aws ssm put-parameter --name "/prefix/upstream/app1" --type "String" --value "10.0.1.10:8080" --endpoint-url $SSM_ENDPOINT_URL
-aws ssm put-parameter --name "/prefix/upstream/app2" --type "String" --value "10.0.1.11:8080" --endpoint-url $SSM_ENDPOINT_URL
+aws ssm put-parameter --name "/nested/production/app1" --type "String" --value "10.0.1.10:8080" --endpoint-url $SSM_ENDPOINT_URL
+aws ssm put-parameter --name "/nested/production/app2" --type "String" --value "10.0.1.11:8080" --endpoint-url $SSM_ENDPOINT_URL
+aws ssm put-parameter --name "/nested/staging/app1" --type "String" --value "172.16.1.10:8080" --endpoint-url $SSM_ENDPOINT_URL
+aws ssm put-parameter --name "/nested/staging/app2" --type "String" --value "172.16.1.11:8080" --endpoint-url $SSM_ENDPOINT_URL
 
 # Run confd, expect it to work
 confd --onetime --log-level debug --confdir ./test/integration/confdir --interval 5 --backend ssm

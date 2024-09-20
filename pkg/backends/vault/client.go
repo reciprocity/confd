@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
+	"strings"
 
 	"github.com/abtreece/confd/pkg/log"
 	vaultapi "github.com/hashicorp/vault/api"
@@ -84,7 +85,7 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 			"password": password,
 		})
 	case "kubernetes":
-		jwt, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
+		jwt, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
 		if err != nil {
 			return err
 		}
@@ -106,7 +107,7 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 	}
 
 	if secret == nil || secret.Auth == nil {
-		return errors.New("Unable to authenticate")
+		return errors.New("unable to authenticate")
 	}
 
 	log.Debug("client authenticated with auth backend: %s", authType)
@@ -131,7 +132,7 @@ func getConfig(address, cert, key, caCert string) (*vaultapi.Config, error) {
 	}
 
 	if caCert != "" {
-		ca, err := ioutil.ReadFile(caCert)
+		ca, err := os.ReadFile(caCert)
 		if err != nil {
 			return nil, err
 		}
@@ -172,121 +173,155 @@ func New(address, authType string, params map[string]string) (*Client, error) {
 }
 
 // GetValues queries Vault for keys prefixed by prefix.
-func (c *Client) GetValues(keys []string) (map[string]string, error) {
-	branches := make(map[string]bool)
-	for _, key := range keys {
-		walkTree(c, key, branches)
-	}
+func (c *Client) GetValues(paths []string) (map[string]string, error) {
 	vars := make(map[string]string)
-	for key := range branches {
-		log.Debug("getting %s from vault", key)
-		resp, err := c.client.Logical().Read(key)
+	var mounts []string
+	for _, path := range paths {
+		path = strings.TrimRight(path, "/*")
+		mounts = append(mounts, getMount(path))
+	}
+	mounts = uniqMounts(mounts)
 
+	for _, mount := range mounts {
+		resp, err := c.client.Logical().ReadRaw("/sys/internal/ui/mounts/" + mount)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 		if err != nil {
-			log.Debug("there was an error extracting %s", key)
-			return nil, err
-		}
-		if resp == nil || resp.Data == nil {
-			continue
+			fmt.Printf("there was an error getting %s version", mount)
+			fmt.Println(err)
 		}
 
-		// check for KV V2 secrets
-		if m, ok := resp.Data["metadata"].(map[string]interface{}); ok {
-			kvData, dataOK := resp.Data["data"].(map[string]interface{})
-			_, versionJSONNumberOK := m["version"].(json.Number)
-			if versionJSONNumberOK && dataOK {
-				js, _ := json.Marshal(kvData)
-				vars[key] = string(js)
-				flatten(key, kvData, vars)
+		secret, err := vaultapi.ParseSecret(resp.Body)
+		if err != nil {
+			fmt.Printf("there was an error parsing secrets of %s", mount)
+			fmt.Println(err)
+		}
+
+		engine := secret.Data["type"]
+
+		if engine == "kv" {
+			options := secret.Data["options"]
+			versionRaw := options.(map[string]interface{})["version"]
+			version := versionRaw.(string)
+			var key string
+			switch version {
+			case "", "1":
+				for _, secret := range RecursiveListSecret(c.client, mount, key, version) {
+					resp, _ := c.client.Logical().Read(secret)
+
+					js, _ := json.Marshal(resp.Data)
+					vars[secret] = string(js)
+					flatten(secret, resp.Data, mount, vars)
+				}
+			case "2":
+				for _, secret := range RecursiveListSecret(c.client, mount, key, version) {
+					resp, _ := c.client.Logical().Read(secret)
+
+					js, _ := json.Marshal(resp.Data["data"])
+					vars[secret] = string(js)
+					flatten(secret, resp.Data["data"], mount, vars)
+				}
 			}
-		} else if val, ok := isKV(resp.Data); ok {
-			vars[key] = val
 		} else {
-			// save the json encoded response
-			// and flatten it to allow usage of gets & getvs
-			js, _ := json.Marshal(resp.Data)
-			vars[key] = string(js)
-			flatten(key, resp.Data, vars)
+			log.Error("Engine type %s is not supported", engine)
 		}
 	}
 	return vars, nil
 }
 
-// isKV checks if a given map has only one key of type string
-// if so, returns the value of that key
-func isKV(data map[string]interface{}) (string, bool) {
-	if len(data) == 1 {
-		if value, ok := data["value"]; ok {
-			if text, ok := value.(string); ok {
-				return text, true
-			}
-		}
-	}
-	return "", false
-}
-
-// recursively walks on all the values of a specific key and set them in the variables map
-func flatten(key string, value interface{}, vars map[string]string) {
+// recursively walks on all the keys of a specific secret and set them in the variables map
+func flatten(key string, value interface{}, mount string, vars map[string]string) {
 	switch value.(type) {
 	case string:
-		log.Debug("setting key %s to: %s", key, value)
+		key = strings.ReplaceAll(key, "data/", "")
 		vars[key] = value.(string)
 	case map[string]interface{}:
 		inner := value.(map[string]interface{})
 		for innerKey, innerValue := range inner {
 			innerKey = path.Join(key, "/", innerKey)
-			flatten(innerKey, innerValue, vars)
+			flatten(innerKey, innerValue, mount, vars)
 		}
 	default: // we don't know how to handle non string or maps of strings
 		log.Warning("type of '%s' is not supported (%T)", key, value)
 	}
 }
 
-// recursively walk the branches in the Vault, adding to branches map
-func walkTree(c *Client, key string, branches map[string]bool) error {
-	log.Debug("listing %s from vault", key)
+var secretListPath []string
 
-	// strip trailing slash as long as it's not the only character
-	if last := len(key) - 1; last > 0 && key[last] == '/' {
-		key = key[:last]
-	}
-	if branches[key] {
-		// already processed this branch
-		return nil
-	}
-	branches[key] = true
-
-	resp, err := c.client.Logical().List(key)
-
-	if err != nil {
-		log.Debug("there was an error extracting %s", key)
-		return err
-	}
-	if resp == nil || resp.Data == nil || resp.Data["keys"] == nil {
-		return nil
-	}
-
-	switch resp.Data["keys"].(type) {
-	case []interface{}:
-		// expected
-	default:
-		log.Warning("key list type of '%s' is not supported (%T)", key, resp.Data["keys"])
-		return nil
-	}
-
-	keyList := resp.Data["keys"].([]interface{})
-	for _, innerKey := range keyList {
-		switch innerKey.(type) {
-
-		case string:
-			innerKey = path.Join(key, "/", innerKey.(string))
-			walkTree(c, innerKey.(string), branches)
-
-		default: // we don't know how to handle other data types
-			log.Warning("type of '%s' is not supported (%T)", key, keyList)
+// ListSecret returns a list of secrets from Vault
+func ListSecret(vault *vaultapi.Client, path string, key string, version string) (*vaultapi.Secret, error) {
+	switch version {
+	case "1":
+		secret, err := vault.Logical().List(path + key)
+		if err != nil {
+			log.Warning("Couldn't list from the Vault.")
 		}
+		return secret, err
+	case "2":
+		secret, err := vault.Logical().List(path + "/metadata/" + key)
+		if err != nil {
+			log.Warning("Couldn't list from the Vault.")
+		}
+		return secret, err
+	}
+	return nil, nil
+}
+
+// RecursiveListSecret returns a list of secrets paths from Vault
+func RecursiveListSecret(vault *vaultapi.Client, path string, key string, version string) []string {
+	switch version {
+	case "1":
+		secretList, err := ListSecret(vault, path, key, version)
+		if err == nil && secretList != nil {
+			for _, secret := range secretList.Data["keys"].([]interface{}) {
+				if strings.HasSuffix(secret.(string), "/") {
+					key := key + "/" + strings.TrimSuffix(secret.(string), "/")
+					RecursiveListSecret(vault, path, key, version)
+				} else {
+					key := key + "/" + strings.TrimSuffix(secret.(string), "/")
+					secretListPath = append([]string{path + key}, secretListPath...)
+				}
+			}
+		} else {
+			secretListPath = append([]string{path}, secretListPath...)
+		}
+		return secretListPath
+	case "2":
+		secretList, err := ListSecret(vault, path, key, version)
+		if err == nil && secretList != nil {
+			for _, secret := range secretList.Data["keys"].([]interface{}) {
+				if strings.HasSuffix(secret.(string), "/") {
+					key := key + "/" + strings.TrimSuffix(secret.(string), "/")
+					RecursiveListSecret(vault, path, key, version)
+				} else {
+					key := key + "/" + strings.TrimSuffix(secret.(string), "/")
+					secretListPath = append([]string{path + "/data" + key}, secretListPath...)
+				}
+			}
+		} else {
+			secretListPath = append([]string{path + "data/"}, secretListPath...)
+		}
+		return secretListPath
 	}
 	return nil
+}
+
+func getMount(path string) string {
+	split := strings.Split(path, string(os.PathSeparator))
+	return "/" + split[1]
+}
+
+func uniqMounts(strSlice []string) []string {
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 // WatchPrefix - not implemented at the moment

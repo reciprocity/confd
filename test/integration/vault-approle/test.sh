@@ -4,11 +4,11 @@ export HOSTNAME="localhost"
 
 vault secrets enable -version 1 -path kv-v1 kv
 
-vault write kv-v1/exists key=foobar
+#vault write kv-v1/key key=foobar
 vault write kv-v1/database host=127.0.0.1 port=3306 username=confd password=p@sSw0rd
 vault write kv-v1/upstream app1=10.0.1.10:8080 app2=10.0.1.11:8080
-vault write kv-v1/nested/east app1=10.0.1.10:8080
-vault write kv-v1/nested/west app2=10.0.1.11:8080
+vault write kv-v1/nested/production app1=10.0.1.10:8080 app2=10.0.1.11:8080
+vault write kv-v1/nested/staging app1=172.16.1.10:8080 app2=172.16.1.11:8080
 
 vault auth enable -path=test approle
 
@@ -25,10 +25,11 @@ export SECRET_ID=$(vault write -f -field=secret_id auth/test/role/my-role/secret
 
 # Run confd
 confd --onetime --log-level debug \
-      --confdir ./test/integration/vault-approle/confdir \
+      --confdir ./test/integration/confdir \
       --backend vault \
       --auth-type app-role \
       --role-id $ROLE_ID \
       --secret-id $SECRET_ID \
       --path=test \
+      --prefix "kv-v1" \
       --node $VAULT_ADDR

@@ -39,22 +39,16 @@ aws dynamodb put-item --table-name confd --region $AWS_REGION \
     --item '{ "key": { "S": "/upstream/broken" }, "value": {"N": "4711"}}' \
     --endpoint-url $DYNAMODB_ENDPOINT_URL
 aws dynamodb put-item --table-name confd --region $AWS_REGION \
-    --item '{ "key": { "S": "/prefix/database/host" }, "value": {"S": "127.0.0.1"}}' \
+    --item '{ "key": { "S": "/nested/production/app1" }, "value": {"S": "10.0.1.10:8080"}}' \
     --endpoint-url $DYNAMODB_ENDPOINT_URL
 aws dynamodb put-item --table-name confd --region $AWS_REGION \
-    --item '{ "key": { "S": "/prefix/database/password" }, "value": {"S": "p@sSw0rd"}}' \
+    --item '{ "key": { "S": "/nested/production/app2" }, "value": {"S": "10.0.1.11:8080"}}' \
     --endpoint-url $DYNAMODB_ENDPOINT_URL
 aws dynamodb put-item --table-name confd --region $AWS_REGION \
-    --item '{ "key": { "S": "/prefix/database/port" }, "value": {"S": "3306"}}' \
+    --item '{ "key": { "S": "/nested/staging/app1" }, "value": {"S": "172.16.1.10:8080"}}' \
     --endpoint-url $DYNAMODB_ENDPOINT_URL
 aws dynamodb put-item --table-name confd --region $AWS_REGION \
-    --item '{ "key": { "S": "/prefix/database/username" }, "value": {"S": "confd"}}' \
-    --endpoint-url $DYNAMODB_ENDPOINT_URL
-aws dynamodb put-item --table-name confd --region $AWS_REGION \
-    --item '{ "key": { "S": "/prefix/upstream/app1" }, "value": {"S": "10.0.1.10:8080"}}' \
-    --endpoint-url $DYNAMODB_ENDPOINT_URL
-aws dynamodb put-item --table-name confd --region $AWS_REGION \
-    --item '{ "key": { "S": "/prefix/upstream/app2" }, "value": {"S": "10.0.1.11:8080"}}' \
+    --item '{ "key": { "S": "/nested/staging/app2" }, "value": {"S": "172.16.1.11:8080"}}' \
     --endpoint-url $DYNAMODB_ENDPOINT_URL
 
 # Run confd, expect it to work

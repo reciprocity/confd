@@ -1,9 +1,9 @@
 upstream app {
-{{ range gets "/nested/*" }}
-  {{ range gets .Key }}
+{{- range gets "/nested/production/*" }}
+  {{- range gets .Key }}
     server {{ .Value }};
-  {{ end }}
-{{ end }}
+  {{- end }}
+{{- end }}
 }
 
 server {

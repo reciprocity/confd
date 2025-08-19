@@ -67,6 +67,7 @@ func init() {
 	flag.StringVar(&config.SecretID, "secret-id", "", "Vault secret-id to use with the AppRole backend (only used with -backend=vault and auth-type=app-role)")
 	flag.StringVar(&config.Path, "path", "", "Vault mount path of the auth method (only used with -backend=vault)")
 	flag.StringVar(&config.Table, "table", "", "the name of the DynamoDB table (only used with -backend=dynamodb)")
+	flag.StringVar(&config.Query, "query", "", "DynamoDB Query JSON (optional, only used with -backend=dynamodb)")
 	flag.StringVar(&config.Separator, "separator", "", "the separator to replace '/' with when looking up keys in the backend, prefixed '/' will also be removed (only used with -backend=redis)")
 	flag.StringVar(&config.Username, "username", "", "the username to authenticate as (only used with vault and etcd backends)")
 	flag.StringVar(&config.Password, "password", "", "the password to authenticate with (only used with vault and etcd backends)")
@@ -157,8 +158,8 @@ func initConfig() error {
 		}
 	}
 
-	if config.Backend == "dynamodb" && config.Table == "" {
-		return errors.New("No DynamoDB table configured")
+	if config.Backend == "dynamodb" && config.Table == "" && config.Query == "" {
+		return errors.New("No DynamoDB table or query configured")
 	}
 
 	if config.Backend == "" {

@@ -17,6 +17,7 @@ type Config struct {
 	Password       string     `toml:"password"`
 	Scheme         string     `toml:"scheme"`
 	Table          string     `toml:"table"`
+	Query          string     `toml:"query"`
 	Separator      string     `toml:"separator"`
 	Username       string     `toml:"username"`
 	AppID          string     `toml:"app_id"`

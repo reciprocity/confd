@@ -73,8 +73,14 @@ func New(config Config) (StoreClient, error) {
 		return vault.New(backendNodes[0], config.AuthType, vaultConfig)
 	case "dynamodb":
 		table := config.Table
-		log.Info("DynamoDB table set to " + table)
-		return dynamodb.NewDynamoDBClient(table)
+		query := config.Query
+		if table != "" {
+			log.Info("DynamoDB table set to " + table)
+		}
+		if query != "" {
+			log.Info("DynamoDB query set to " + query)
+		}
+		return dynamodb.NewDynamoDBClient(table, query)
 	case "ssm":
 		return ssm.New()
 	}

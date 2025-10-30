@@ -1,7 +1,8 @@
 module github.com/abtreece/confd
 
-go 1.22.0
-toolchain go1.24.1
+go 1.23.0
+
+toolchain go1.25.3
 
 require (
 	github.com/BurntSushi/toml v1.5.0

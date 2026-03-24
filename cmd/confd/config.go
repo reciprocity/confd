@@ -84,7 +84,7 @@ func initConfig() error {
 	if os.IsNotExist(err) {
 		log.Debug("Skipping confd config file.")
 	} else {
-		log.Debug("Loading " + config.ConfigFile)
+		log.Debug("Loading %s", config.ConfigFile)
 		configBytes, err := os.ReadFile(config.ConfigFile)
 		if err != nil {
 			return err
@@ -109,7 +109,7 @@ func initConfig() error {
 
 	// Update BackendNodes from SRV records.
 	if config.Backend != "env" && config.SRVRecord != "" {
-		log.Info("SRV record set to " + config.SRVRecord)
+		log.Info("SRV record set to %s", config.SRVRecord)
 		srvNodes, err := getBackendNodesFromSRV(config.SRVRecord)
 		if err != nil {
 			return errors.New("Cannot get nodes from SRV records " + err.Error())
@@ -153,7 +153,7 @@ func initConfig() error {
 		}
 
 		if unsupportedBackends[config.Backend] {
-			log.Info(fmt.Sprintf("Watch is not supported for backend %s. Exiting...", config.Backend))
+			log.Info("Watch is not supported for backend %s. Exiting...", config.Backend)
 			os.Exit(1)
 		}
 	}
@@ -167,7 +167,7 @@ func initConfig() error {
 		os.Exit(1)
 	}
 	// Initialize the storage client
-	log.Info("Backend set to " + config.Backend)
+	log.Info("Backend set to %s", config.Backend)
 	config.ConfigDir = filepath.Join(config.ConfDir, "conf.d")
 	config.TemplateDir = filepath.Join(config.ConfDir, "templates")
 	return nil

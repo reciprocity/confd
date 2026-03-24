@@ -1,4 +1,4 @@
-.PHONY: build install clean test integration dep release
+.PHONY: build install clean test integration integration-docker dep release
 VERSION=`egrep -o '[0-9]+\.[0-9a-z.\-]+' cmd/confd/version.go`
 GIT_SHA=`git rev-parse --short HEAD || echo`
 
@@ -26,6 +26,13 @@ integration:
 		bash test/integration/expect/check.sh || exit 1; \
 		rm /tmp/confd-*; \
 	done
+
+integration-docker:
+	@docker compose -p confd-integration -f test/docker-compose.yml up --build -d 2>/dev/null; \
+	docker compose -p confd-integration -f test/docker-compose.yml logs -f test-runner; \
+	exit_code=$$(docker inspect confd-integration-test-runner-1 --format='{{.State.ExitCode}}'); \
+	docker compose -p confd-integration -f test/docker-compose.yml down 2>/dev/null; \
+	exit $$exit_code
 
 mod:
 	@go mod tidy

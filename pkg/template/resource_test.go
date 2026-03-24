@@ -66,7 +66,7 @@ func TestProcessTemplateResources(t *testing.T) {
 	templateResourcePath := filepath.Join(tempConfDir, "conf.d", "foo.toml")
 	templateResourceFile, err := os.Create(templateResourcePath)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 	}
 	tmpl, err := template.New("templateResourceConfig").Parse(templateResourceConfigTmpl)
 	if err != nil {
@@ -77,13 +77,13 @@ func TestProcessTemplateResources(t *testing.T) {
 	data["dest"] = destFile.Name()
 	err = tmpl.Execute(templateResourceFile, data)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 	}
 
 	os.Setenv("FOO", "bar")
 	storeClient, err := env.NewEnvClient()
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("%s", err.Error())
 	}
 	c := Config{
 		ConfDir:     tempConfDir,

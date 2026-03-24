@@ -1,7 +1,6 @@
 package ssm
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/abtreece/confd/pkg/log"
@@ -40,7 +39,7 @@ func New() (*Client, error) {
 		},
 	))
 
-	log.Debug(fmt.Sprintf("Region: %s", aws.StringValue(sess.Config.Region)))
+	log.Debug("Region: %s", aws.StringValue(sess.Config.Region))
 
 	// Fail early, if no credentials can be found
 	_, err := sess.Config.Credentials.Get()

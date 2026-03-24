@@ -1,7 +1,6 @@
 package env
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -36,7 +35,7 @@ func (c *Client) GetValues(keys []string) (map[string]string, error) {
 		}
 	}
 
-	log.Debug(fmt.Sprintf("Key Map: %#v", vars))
+	log.Debug("Key Map: %#v", vars)
 
 	return vars, nil
 }

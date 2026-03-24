@@ -43,7 +43,7 @@ func SetTag(t string) {
 func SetLevel(level string) {
 	lvl, err := log.ParseLevel(level)
 	if err != nil {
-		Fatal(fmt.Sprintf(`not a valid level: "%s"`, level))
+		Fatal(`not a valid level: "%s"`, level)
 	}
 	log.SetLevel(lvl)
 }

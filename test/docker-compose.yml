@@ -1,39 +1,68 @@
 services:
   consul:
     image: hashicorp/consul
-    ports:
-      - 8500:8500
 
   etcd:
     image: quay.io/coreos/etcd:v3.5.13
-    ports:
-      - 2379:2379
     environment:
       ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
       ETCD_ADVERTISE_CLIENT_URLS: http://0.0.0.0:2379
 
   localstack:
-    image: localstack/localstack
-    ports:
-      - 4566:4566
+    image: localstack/localstack:4
     environment:
       SERVICES: dynamodb,ssm
 
   redis:
     image: redis
-    ports:
-      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   vault:
     image: hashicorp/vault
-    ports:
-      - 8200:8200
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: "super-secret-token"
 
   zookeeper:
     image: zookeeper
-    ports:
-      - 2181:2181
     environment:
       ZOO_STANDALONE_ENABLED: "true"
+
+  test-runner:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+      consul:
+        condition: service_started
+      etcd:
+        condition: service_started
+      localstack:
+        condition: service_started
+      vault:
+        condition: service_started
+      zookeeper:
+        condition: service_started
+    environment:
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      ETCD_ENDPOINT: http://etcd:2379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: super-secret-token
+      ZOOKEEPER_NODE: zookeeper:2181
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      DYNAMODB_LOCAL: "1"
+      DYNAMODB_ENDPOINT_URL: http://localstack:4566
+      SSM_LOCAL: "1"
+      SSM_ENDPOINT_URL: http://localstack:4566

@@ -39,7 +39,7 @@ mod:
 
 
 snapshot:
-	@goreleaser --snapshot --skip-publish --clean
+	@goreleaser --clean --snapshot --skip=publish
 
 release:
-	@goreleaser --skip-publish --clean --skip-validate
+	@goreleaser --clean --skip=publish,validate
